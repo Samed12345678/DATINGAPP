@@ -1,6 +1,6 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
-import { storage } from "./storage";
+import { dbStorage } from "./db-storage"; // Use the database storage instead of memory storage
 import { insertUserSchema, insertSwipeSchema, insertMessageSchema } from "@shared/schema";
 import { z } from "zod";
 
@@ -8,7 +8,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Get all users
   app.get("/api/users", async (_req, res) => {
     try {
-      const users = await storage.getUsers();
+      const users = await dbStorage.getUsers();
       res.json(users);
     } catch (error) {
       res.status(500).json({ message: "Failed to get users" });
@@ -23,7 +23,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Invalid user ID" });
       }
       
-      const user = await storage.getUser(id);
+      const user = await dbStorage.getUser(id);
       if (!user) {
         return res.status(404).json({ message: "User not found" });
       }
@@ -38,7 +38,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/users", async (req, res) => {
     try {
       const userData = insertUserSchema.parse(req.body);
-      const user = await storage.createUser(userData);
+      const user = await dbStorage.createUser(userData);
       res.status(201).json(user);
     } catch (error) {
       if (error instanceof z.ZodError) {
@@ -56,12 +56,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Invalid user ID" });
       }
       
-      const user = await storage.getUser(id);
+      const user = await dbStorage.getUser(id);
       if (!user) {
         return res.status(404).json({ message: "User not found" });
       }
       
-      const profiles = await storage.getUsersForSwiping(id);
+      const profiles = await dbStorage.getUsersForSwiping(id);
       res.json(profiles);
     } catch (error) {
       res.status(500).json({ message: "Failed to get profiles for swiping" });
@@ -76,16 +76,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Invalid user ID" });
       }
       
-      const user = await storage.getUser(id);
+      const user = await dbStorage.getUser(id);
       if (!user) {
         return res.status(404).json({ message: "User not found" });
       }
       
       // Check and reset credits if needed
-      await storage.checkAndResetCreditsIfNeeded(id);
+      await dbStorage.checkAndResetCreditsIfNeeded(id);
       
       // Get updated credits
-      const credits = await storage.getRemainingCredits(id);
+      const credits = await dbStorage.getRemainingCredits(id);
       res.json({ credits });
     } catch (error) {
       res.status(500).json({ message: "Failed to get remaining credits" });
@@ -98,8 +98,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const swipeData = insertSwipeSchema.parse(req.body);
       
       // Check if users exist
-      const swiper = await storage.getUser(swipeData.swiperId);
-      const swiped = await storage.getUser(swipeData.swipedId);
+      const swiper = await dbStorage.getUser(swipeData.swiperId);
+      const swiped = await dbStorage.getUser(swipeData.swipedId);
       
       if (!swiper || !swiped) {
         return res.status(404).json({ message: "User not found" });
@@ -107,7 +107,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Check if user has enough credits for a right swipe (only needed for likes)
       if (swipeData.liked) {
-        const credits = await storage.getRemainingCredits(swipeData.swiperId);
+        const credits = await dbStorage.getRemainingCredits(swipeData.swiperId);
         
         if (credits <= 0) {
           return res.status(403).json({ 
@@ -117,32 +117,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
         
         // Deduct a credit for the like
-        await storage.decrementCredits(swipeData.swiperId);
+        await dbStorage.decrementCredits(swipeData.swiperId);
       }
       
       // Create the swipe
-      const swipe = await storage.createSwipe(swipeData);
+      const swipe = await dbStorage.createSwipe(swipeData);
       
       // Update the profile's popularity score
       if (swipeData.liked) {
         // Increase score when liked
-        await storage.incrementLikesReceived(swipeData.swipedId);
+        await dbStorage.incrementLikesReceived(swipeData.swipedId);
       } else {
         // Decrease score when disliked
-        await storage.incrementDislikesReceived(swipeData.swipedId);
+        await dbStorage.incrementDislikesReceived(swipeData.swipedId);
       }
       
       // If it's a right swipe (like), check for a match
       if (swipeData.liked) {
         // Check if the other user has already liked this user
-        const otherSwipe = await storage.getSwipe(swipeData.swipedId, swipeData.swiperId);
+        const otherSwipe = await dbStorage.getSwipe(swipeData.swipedId, swipeData.swiperId);
         
         if (otherSwipe && otherSwipe.liked) {
           // It's a match! Create a match record
-          const match = await storage.createMatch(swipeData.swiperId, swipeData.swipedId);
+          const match = await dbStorage.createMatch(swipeData.swiperId, swipeData.swipedId);
           
           // Get updated remaining credits
-          const creditsRemaining = await storage.getRemainingCredits(swipeData.swiperId);
+          const creditsRemaining = await dbStorage.getRemainingCredits(swipeData.swiperId);
           
           return res.status(201).json({ 
             swipe, 
@@ -155,7 +155,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Get updated remaining credits
-      const creditsRemaining = await storage.getRemainingCredits(swipeData.swiperId);
+      const creditsRemaining = await dbStorage.getRemainingCredits(swipeData.swiperId);
       
       // Return the swipe with no match
       res.status(201).json({ 
@@ -179,12 +179,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Invalid user ID" });
       }
       
-      const user = await storage.getUser(id);
+      const user = await dbStorage.getUser(id);
       if (!user) {
         return res.status(404).json({ message: "User not found" });
       }
       
-      const matches = await storage.getMatches(id);
+      const matches = await dbStorage.getMatches(id);
       res.json(matches);
     } catch (error) {
       res.status(500).json({ message: "Failed to get matches" });
@@ -199,7 +199,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Invalid match ID" });
       }
       
-      const messages = await storage.getMessages(id);
+      const messages = await dbStorage.getMessages(id);
       res.json(messages);
     } catch (error) {
       res.status(500).json({ message: "Failed to get messages" });
@@ -210,7 +210,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/messages", async (req, res) => {
     try {
       const messageData = insertMessageSchema.parse(req.body);
-      const message = await storage.createMessage(messageData);
+      const message = await dbStorage.createMessage(messageData);
       res.status(201).json(message);
     } catch (error) {
       if (error instanceof z.ZodError) {
@@ -228,12 +228,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Invalid user ID" });
       }
       
-      const user = await storage.getUser(id);
+      const user = await dbStorage.getUser(id);
       if (!user) {
         return res.status(404).json({ message: "User not found" });
       }
       
-      const count = await storage.getUnreadMessageCount(id);
+      const count = await dbStorage.getUnreadMessageCount(id);
       res.json({ count });
     } catch (error) {
       res.status(500).json({ message: "Failed to get unread message count" });
