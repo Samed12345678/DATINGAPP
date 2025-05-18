@@ -256,31 +256,57 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Generate AI message suggestions 
   app.post("/api/messages/suggestions", async (req, res) => {
     try {
-      const id = parseInt(req.params.id);
-      if (isNaN(id)) {
-        return res.status(400).json({ message: "Invalid match ID" });
+      const { recipientName, relationshipIntent } = req.body;
+      
+      if (!recipientName || !relationshipIntent) {
+        return res.status(400).json({ message: "Missing required fields" });
       }
       
-      const messages = await dbStorage.getMessages(id);
-      res.json(messages);
+      // Check if we have OpenAI API key available
+      const openaiApiKey = process.env.OPENAI_API_KEY;
+      
+      if (!openaiApiKey) {
+        // Return mock suggestions if API key is not available
+        const mockSuggestions = getMockMessageSuggestions(recipientName, relationshipIntent);
+        return res.json({ suggestions: mockSuggestions });
+      }
+      
+      // If we have an API key, we would generate real suggestions with OpenAI
+      // This would be implemented once the API key is provided
+      const mockSuggestions = getMockMessageSuggestions(recipientName, relationshipIntent);
+      res.json({ suggestions: mockSuggestions });
     } catch (error) {
-      res.status(500).json({ message: "Failed to get messages" });
+      res.status(500).json({ message: "Failed to generate message suggestions" });
     }
   });
 
-  // Send a message
-  app.post("/api/messages", async (req, res) => {
-    try {
-      const messageData = insertMessageSchema.parse(req.body);
-      const message = await dbStorage.createMessage(messageData);
-      res.status(201).json(message);
-    } catch (error) {
-      if (error instanceof z.ZodError) {
-        return res.status(400).json({ message: "Invalid message data", errors: error.errors });
-      }
-      res.status(500).json({ message: "Failed to create message" });
-    }
-  });
+  // Helper function to generate suggestions based on relationship intent
+  function getMockMessageSuggestions(recipientName: string, relationshipIntent: string) {
+    const suggestions: Record<string, string[]> = {
+      'long-term': [
+        `Hi ${recipientName}, I noticed we share an interest in puzzles. What's your favorite type to solve?`,
+        `Hello ${recipientName}! I'm looking for something meaningful. What are you hoping to find here?`,
+        `${recipientName}, your profile really caught my attention. I'd love to get to know you better.`
+      ],
+      'casual': [
+        `Hey ${recipientName}! How's your day going? Any fun plans for the weekend?`,
+        `${recipientName}, your profile made me smile. What do you enjoy doing for fun?`,
+        `Hi there ${recipientName}! No pressure, just wanted to say hello and see where things go.`
+      ],
+      'friendship': [
+        `Hey ${recipientName}, I'm new in town and looking to make some friends. Would you be up for showing me around?`,
+        `Hi ${recipientName}! I noticed we both enjoy similar activities. Would be great to hang out sometime!`,
+        `${recipientName}, looking to expand my social circle. What kind of activities do you enjoy with friends?`
+      ],
+      'one-night': [
+        `Hey ${recipientName}, I'm only in town for the night. Want to meet up for a drink?`,
+        `${recipientName}, you're incredibly attractive. Any interest in meeting up tonight?`,
+        `Direct and honest - I'm looking for something casual. If that's not your thing, no worries!`
+      ]
+    };
+    
+    return suggestions[relationshipIntent] || suggestions['casual'];
+  }
 
   // Get unread message count for a user
   app.get("/api/users/:id/unread", async (req, res) => {

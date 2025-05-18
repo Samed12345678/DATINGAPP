@@ -28,35 +28,31 @@ export function MessageSuggestions({ recipientName, onSelectSuggestion }: Messag
     setLoading(true);
     
     try {
-      // In a real implementation with an API key, this would call the backend API
-      // For now, we'll use pre-defined suggestions based on intent
-      const mockSuggestions: Record<DatingIntent, string[]> = {
-        'long-term': [
-          `Hi ${recipientName}, I noticed we share an interest in puzzles. What's your favorite type to solve?`,
-          `Hello ${recipientName}! I'm looking for something meaningful. What are you hoping to find here?`,
-          `${recipientName}, your profile really caught my attention. I'd love to get to know you better.`
-        ],
-        'casual': [
-          `Hey ${recipientName}! How's your day going? Any fun plans for the weekend?`,
-          `${recipientName}, your profile made me smile. What do you enjoy doing for fun?`,
-          `Hi there ${recipientName}! No pressure, just wanted to say hello and see where things go.`
-        ],
-        'friendship': [
-          `Hey ${recipientName}, I'm new in town and looking to make some friends. Would you be up for showing me around?`,
-          `Hi ${recipientName}! I noticed we both enjoy similar activities. Would be great to hang out sometime!`,
-          `${recipientName}, looking to expand my social circle. What kind of activities do you enjoy with friends?`
-        ],
-        'one-night': [
-          `Hey ${recipientName}, I'm only in town for the night. Want to meet up for a drink?`,
-          `${recipientName}, you're incredibly attractive. Any interest in meeting up tonight?`,
-          `Direct and honest - I'm looking for something casual. If that's not your thing, no worries!`
-        ]
+      // Call the backend API to get message suggestions
+      const response = await fetch('/api/messages/suggestions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          recipientName,
+          relationshipIntent: currentIntent
+        }),
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to fetch message suggestions');
+      }
+      
+      const data = await response.json();
+      
+      // Create a suggestions object with the current intent's suggestions
+      const newSuggestions = {
+        ...suggestions,
+        [currentIntent]: data.suggestions || []
       };
       
-      // Simulate API delay
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      setSuggestions(mockSuggestions);
+      setSuggestions(newSuggestions);
     } catch (error) {
       console.error('Failed to generate suggestions:', error);
     } finally {

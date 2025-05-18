@@ -6,6 +6,7 @@ import NotFound from "@/pages/not-found";
 import Home from "@/pages/Home";
 import Matches from "@/pages/Matches";
 import Messages from "@/pages/Messages";
+import ChatConversation from "@/pages/ChatConversation";
 import BottomNavigation from "./components/BottomNavigation";
 import TopNavigation from "./components/TopNavigation";
 import { useState, useEffect } from "react";
