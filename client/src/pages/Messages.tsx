@@ -3,7 +3,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { formatDistanceToNow } from "date-fns";
-import { Link } from "wouter";
+import { Link, useLocation } from "wouter";
 
 interface User {
   id: number;
@@ -77,7 +77,7 @@ const Messages = ({ userId }: MessagesProps) => {
             <Card 
               key={match.id} 
               className="hover:bg-muted/40 transition cursor-pointer"
-              onClick={() => window.location.href = `/messages/${match.id}`}
+              onClick={() => window.location.pathname = `/messages/${match.id}`}
             >
               <CardContent className="p-3 flex items-center gap-3">
                 <Avatar>
