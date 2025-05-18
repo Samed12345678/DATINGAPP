@@ -190,9 +190,71 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ message: "Failed to get matches" });
     }
   });
-
+  
+  // Get a specific match with user info
+  app.get("/api/matches/:id", async (req, res) => {
+    try {
+      const matchId = parseInt(req.params.id);
+      if (isNaN(matchId)) {
+        return res.status(400).json({ message: "Invalid match ID" });
+      }
+      
+      // For simplicity, we're assuming the current user is user1 in the match
+      // In a real app, this would be determined by the authenticated user
+      const currentUserId = 1;
+      
+      const matches = await dbStorage.getMatches(currentUserId);
+      const matchWithUser = matches.find(m => m.match.id === matchId);
+      
+      if (!matchWithUser) {
+        return res.status(404).json({ message: "Match not found" });
+      }
+      
+      res.json(matchWithUser);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to get match details" });
+    }
+  });
+  
   // Get messages for a match
   app.get("/api/matches/:id/messages", async (req, res) => {
+    try {
+      const matchId = parseInt(req.params.id);
+      if (isNaN(matchId)) {
+        return res.status(400).json({ message: "Invalid match ID" });
+      }
+      
+      const messages = await dbStorage.getMessages(matchId);
+      res.json(messages);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to get messages" });
+    }
+  });
+  
+  // Send a message
+  app.post("/api/messages", async (req, res) => {
+    try {
+      const { matchId, senderId, receiverId, content } = req.body;
+      
+      if (!matchId || !senderId || !receiverId || !content) {
+        return res.status(400).json({ message: "Missing required fields" });
+      }
+      
+      const message = await dbStorage.createMessage({
+        matchId,
+        senderId,
+        receiverId,
+        content
+      });
+      
+      res.status(201).json(message);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to send message" });
+    }
+  });
+  
+  // Generate AI message suggestions 
+  app.post("/api/messages/suggestions", async (req, res) => {
     try {
       const id = parseInt(req.params.id);
       if (isNaN(id)) {
