@@ -49,8 +49,17 @@ const Home = ({ userId }: HomeProps) => {
   useEffect(() => {
     if (creditsData?.credits !== undefined) {
       setRemainingCredits(creditsData.credits);
+      
+      // Show a warning toast when credits are running low
+      if (creditsData.credits === 1) {
+        toast({
+          title: "Last credit remaining",
+          description: "You have only 1 like left today. Choose wisely!",
+          variant: "warning",
+        });
+      }
     }
-  }, [creditsData]);
+  }, [creditsData, toast]);
 
   // Handle swipe mutation
   const swipeMutation = useMutation({
@@ -107,6 +116,16 @@ const Home = ({ userId }: HomeProps) => {
     if (profiles.length <= currentIndex) return;
     
     const currentProfile = profiles[currentIndex];
+    
+    // Check if user has enough credits to like
+    if (liked && remainingCredits <= 0) {
+      toast({
+        title: "Out of credits",
+        description: "You've used all your daily likes. Credits will refresh tomorrow!",
+        variant: "destructive",
+      });
+      return;
+    }
     
     if (cardRef.current) {
       liked ? cardRef.current.classList.add('swipe-right') : cardRef.current.classList.add('swipe-left');
@@ -255,7 +274,8 @@ const Home = ({ userId }: HomeProps) => {
       {/* Swipe buttons */}
       <SwipeButtons 
         onSwipeLeft={() => handleSwipe(false)} 
-        onSwipeRight={() => handleSwipe(true)} 
+        onSwipeRight={() => handleSwipe(true)}
+        creditsRemaining={remainingCredits}
       />
 
       {/* Match modal */}

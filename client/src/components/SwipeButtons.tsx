@@ -5,9 +5,13 @@ interface SwipeButtonsProps {
   onSwipeLeft: () => void;
   onSwipeRight: () => void;
   onSuperLike?: () => void;
+  creditsRemaining?: number;
 }
 
-const SwipeButtons = ({ onSwipeLeft, onSwipeRight, onSuperLike }: SwipeButtonsProps) => {
+const SwipeButtons = ({ onSwipeLeft, onSwipeRight, onSuperLike, creditsRemaining = 0 }: SwipeButtonsProps) => {
+  // Determine if the like button should be disabled
+  const isLikeDisabled = creditsRemaining <= 0;
+  
   return (
     <div className="absolute bottom-4 left-0 right-0 flex items-center justify-center space-x-6 z-20">
       <Button
@@ -19,9 +23,11 @@ const SwipeButtons = ({ onSwipeLeft, onSwipeRight, onSuperLike }: SwipeButtonsPr
       
       <Button
         onClick={onSwipeRight}
-        className="w-14 h-14 rounded-full bg-white flex items-center justify-center shadow-lg border border-neutral-300 hover:scale-105 active:scale-95 p-0"
+        disabled={isLikeDisabled}
+        className={`w-14 h-14 rounded-full bg-white flex items-center justify-center shadow-lg border ${isLikeDisabled ? 'border-neutral-200 opacity-60 cursor-not-allowed' : 'border-neutral-300 hover:scale-105 active:scale-95'} p-0`}
+        title={isLikeDisabled ? "Out of credits for today" : "Like this profile"}
       >
-        <Heart className="h-6 w-6 text-primary" fill="currentColor" />
+        <Heart className={`h-6 w-6 ${isLikeDisabled ? 'text-neutral-400' : 'text-primary'}`} fill="currentColor" />
       </Button>
       
       {onSuperLike && (
