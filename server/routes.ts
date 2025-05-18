@@ -68,6 +68,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get user's remaining daily credits
+  app.get("/api/users/:id/credits", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) {
+        return res.status(400).json({ message: "Invalid user ID" });
+      }
+      
+      const user = await storage.getUser(id);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+      
+      // Check and reset credits if needed
+      await storage.checkAndResetCreditsIfNeeded(id);
+      
+      // Get updated credits
+      const credits = await storage.getRemainingCredits(id);
+      res.json({ credits });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to get remaining credits" });
+    }
+  });
+
   // Create a swipe (left or right)
   app.post("/api/swipes", async (req, res) => {
     try {
@@ -81,8 +105,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "User not found" });
       }
       
+      // Check if user has enough credits for a right swipe (only needed for likes)
+      if (swipeData.liked) {
+        const credits = await storage.getRemainingCredits(swipeData.swiperId);
+        
+        if (credits <= 0) {
+          return res.status(403).json({ 
+            message: "Not enough credits to like a profile", 
+            creditsRemaining: 0
+          });
+        }
+        
+        // Deduct a credit for the like
+        await storage.decrementCredits(swipeData.swiperId);
+      }
+      
       // Create the swipe
       const swipe = await storage.createSwipe(swipeData);
+      
+      // Update the profile's popularity score
+      if (swipeData.liked) {
+        // Increase score when liked
+        await storage.incrementLikesReceived(swipeData.swipedId);
+      } else {
+        // Decrease score when disliked
+        await storage.incrementDislikesReceived(swipeData.swipedId);
+      }
       
       // If it's a right swipe (like), check for a match
       if (swipeData.liked) {
@@ -92,19 +140,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
         if (otherSwipe && otherSwipe.liked) {
           // It's a match! Create a match record
           const match = await storage.createMatch(swipeData.swiperId, swipeData.swipedId);
+          
+          // Get updated remaining credits
+          const creditsRemaining = await storage.getRemainingCredits(swipeData.swiperId);
+          
           return res.status(201).json({ 
             swipe, 
             isMatch: true,
             match,
-            matchedUser: swiped
+            matchedUser: swiped,
+            creditsRemaining
           });
         }
       }
       
+      // Get updated remaining credits
+      const creditsRemaining = await storage.getRemainingCredits(swipeData.swiperId);
+      
       // Return the swipe with no match
       res.status(201).json({ 
         swipe, 
-        isMatch: false 
+        isMatch: false,
+        creditsRemaining
       });
     } catch (error) {
       if (error instanceof z.ZodError) {

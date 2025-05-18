@@ -71,7 +71,16 @@ export class MemStorage implements IStorage {
 
   async createUser(insertUser: InsertUser): Promise<User> {
     const id = this.currentUserId++;
-    const user: User = { ...insertUser, id };
+    const user: User = { 
+      ...insertUser, 
+      id,
+      // Initialize scoring and credit system fields
+      score: "100",
+      likesReceived: 0,
+      dislikesReceived: 0,
+      creditsRemaining: this.DEFAULT_DAILY_CREDITS,
+      lastCreditReset: new Date()
+    };
     this.users.set(id, user);
     return user;
   }
@@ -306,7 +315,8 @@ export class MemStorage implements IStorage {
   }
 
   private addMockData() {
-    const mockUsers: InsertUser[] = [
+    // We'll add mock users with varying initial scores to demonstrate the algorithm
+    const mockUsers: any[] = [
       {
         username: "elara",
         password: "password123",
@@ -316,7 +326,12 @@ export class MemStorage implements IStorage {
         title: "Elven Sorceress",
         image: "https://images.unsplash.com/photo-1535324492437-d8dea70a38a7?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&h=600",
         distance: 2,
-        tags: ["Magic", "Riddles", "Ancient Lore", "Spellcraft"]
+        tags: ["Magic", "Riddles", "Ancient Lore", "Spellcraft"],
+        score: "120", // Popular profile
+        likesReceived: 15,
+        dislikesReceived: 2,
+        creditsRemaining: this.DEFAULT_DAILY_CREDITS,
+        lastCreditReset: new Date()
       },
       {
         username: "thorne",
@@ -327,7 +342,12 @@ export class MemStorage implements IStorage {
         title: "Dwarven Riddlemaster",
         image: "https://images.unsplash.com/photo-1560173045-beaf11c65dce?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&h=600",
         distance: 5,
-        tags: ["Riddles", "Mining", "Crafting", "Ale"]
+        tags: ["Riddles", "Mining", "Crafting", "Ale"],
+        score: "85", // Less popular profile
+        likesReceived: 7,
+        dislikesReceived: 9,
+        creditsRemaining: this.DEFAULT_DAILY_CREDITS,
+        lastCreditReset: new Date()
       },
       {
         username: "orianna",

@@ -17,6 +17,9 @@ interface User {
   image: string;
   distance: number;
   tags: string[];
+  score?: string;
+  likesReceived?: number;
+  dislikesReceived?: number;
 }
 
 interface HomeProps {
@@ -27,6 +30,7 @@ const Home = ({ userId }: HomeProps) => {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [matchedUser, setMatchedUser] = useState<User | null>(null);
   const [showMatchModal, setShowMatchModal] = useState(false);
+  const [remainingCredits, setRemainingCredits] = useState(10);
   const cardRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
 
@@ -34,6 +38,19 @@ const Home = ({ userId }: HomeProps) => {
   const { data: profiles = [], isLoading, isError } = useQuery<User[]>({
     queryKey: [`/api/users/${userId}/swipe`],
   });
+
+  // Fetch user credits
+  const { data: creditsData } = useQuery<{credits: number}>({
+    queryKey: [`/api/users/${userId}/credits`],
+    refetchInterval: 60000 // Refresh every minute to check for credit resets
+  });
+  
+  // Update remaining credits when data changes
+  useEffect(() => {
+    if (creditsData?.credits !== undefined) {
+      setRemainingCredits(creditsData.credits);
+    }
+  }, [creditsData]);
 
   // Handle swipe mutation
   const swipeMutation = useMutation({
@@ -48,13 +65,29 @@ const Home = ({ userId }: HomeProps) => {
         setShowMatchModal(true);
       }
       
+      // Update remaining credits
+      if (data.creditsRemaining !== undefined) {
+        setRemainingCredits(data.creditsRemaining);
+      }
+      
       // Go to next card
       goToNextProfile();
       
       // Invalidate queries to refresh data
       queryClient.invalidateQueries({ queryKey: [`/api/users/${userId}/swipe`] });
+      queryClient.invalidateQueries({ queryKey: [`/api/users/${userId}/credits`] });
     },
-    onError: () => {
+    onError: (error: any) => {
+      // Handle no credits error
+      if (error?.response?.status === 403) {
+        toast({
+          title: "Out of credits",
+          description: "You don't have enough credits to like more profiles today. Try again tomorrow!",
+          variant: "destructive",
+        });
+        return;
+      }
+      
       toast({
         title: "Swipe failed",
         description: "Failed to register your swipe. Please try again.",
@@ -162,8 +195,27 @@ const Home = ({ userId }: HomeProps) => {
 
   return (
     <div className="h-full flex flex-col">
+      {/* Credit counter */}
+      <div className="px-4 pt-2 pb-0">
+        <div className="flex items-center justify-between mb-2">
+          <div className="flex items-center">
+            <span className="text-sm font-medium text-neutral-600">Daily Credits:</span>
+            <div className="ml-2 px-2 py-1 bg-primary/10 rounded-full">
+              <span className={`text-sm font-bold ${remainingCredits > 0 ? 'text-primary' : 'text-destructive'}`}>
+                {remainingCredits} {remainingCredits === 1 ? 'like' : 'likes'} remaining
+              </span>
+            </div>
+          </div>
+          {currentProfile && (
+            <div className="text-xs text-neutral-500">
+              Profile Score: {currentProfile.score || '100'}
+            </div>
+          )}
+        </div>
+      </div>
+      
       {/* Card stack */}
-      <div className="card-stack flex-1 flex items-center justify-center px-4 py-6">
+      <div className="card-stack flex-1 flex items-center justify-center px-4 py-2">
         <div 
           ref={cardRef}
           className="swipe-card w-full bg-white rounded-xl overflow-hidden shadow-lg"
