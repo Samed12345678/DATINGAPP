@@ -55,7 +55,6 @@ const Home = ({ userId }: HomeProps) => {
         toast({
           title: "Last credit remaining",
           description: "You have only 1 like left today. Choose wisely!",
-          variant: "warning",
         });
       }
     }
@@ -225,11 +224,6 @@ const Home = ({ userId }: HomeProps) => {
               </span>
             </div>
           </div>
-          {currentProfile && (
-            <div className="text-xs text-neutral-500">
-              Profile Score: {currentProfile.score || '100'}
-            </div>
-          )}
         </div>
       </div>
       

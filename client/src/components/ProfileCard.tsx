@@ -12,6 +12,9 @@ interface Profile {
   image: string;
   distance?: number;
   tags?: string[];
+  score?: string;
+  likesReceived?: number;
+  dislikesReceived?: number;
 }
 
 interface ProfileCardProps {
@@ -29,10 +32,20 @@ const ProfileCard = ({ profile }: ProfileCardProps) => {
           className="w-full h-96 object-cover"
         />
         <div className="absolute bottom-0 left-0 w-full p-4 bg-gradient-to-t from-black/70 to-transparent text-white">
-          <h2 className="text-2xl font-bold">{profile.name}, {profile.age}</h2>
-          {profile.title && (
-            <p className="text-sm opacity-90">{profile.title}</p>
-          )}
+          <div className="flex justify-between items-center">
+            <div>
+              <h2 className="text-2xl font-bold">{profile.name}, {profile.age}</h2>
+              {profile.title && (
+                <p className="text-sm opacity-90">{profile.title}</p>
+              )}
+            </div>
+            {profile.score && (
+              <div className="bg-white/20 backdrop-blur-sm rounded-full px-3 py-1 flex items-center">
+                <span className="text-xs font-medium mr-1">Score</span>
+                <span className="text-sm font-bold">{Math.round(parseFloat(profile.score))}</span>
+              </div>
+            )}
+          </div>
         </div>
       </div>
 

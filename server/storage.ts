@@ -40,7 +40,7 @@ export class MemStorage implements IStorage {
   private currentSwipeId: number;
   private currentMatchId: number;
   private currentMessageId: number;
-  private DEFAULT_DAILY_CREDITS = 10;
+  private DEFAULT_DAILY_CREDITS = 50;
   private SCORE_INCREASE_ON_LIKE = 2;
   private SCORE_DECREASE_ON_DISLIKE = 1;
   private MILLISEC_IN_DAY = 24 * 60 * 60 * 1000;
