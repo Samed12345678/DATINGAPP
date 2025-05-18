@@ -74,29 +74,29 @@ const Messages = ({ userId }: MessagesProps) => {
         {matches.map(({ match, user }) => {
           const matchDate = new Date(match.createdAt);
           return (
-            <Link key={match.id} href={`/messages/${match.id}`}>
-              <a className="block">
-                <Card className="hover:bg-muted/40 transition cursor-pointer">
-                  <CardContent className="p-3 flex items-center gap-3">
-                    <Avatar>
-                      <AvatarImage src={user.image} alt={user.name} />
-                      <AvatarFallback>{user.name.substring(0, 2)}</AvatarFallback>
-                    </Avatar>
-                    <div className="flex-1">
-                      <div className="flex justify-between items-center">
-                        <h3 className="font-medium">{user.name}</h3>
-                        <span className="text-xs text-muted-foreground">
-                          {formatDistanceToNow(matchDate, { addSuffix: true })}
-                        </span>
-                      </div>
-                      <p className="text-sm text-muted-foreground truncate">
-                        You matched with {user.name}!
-                      </p>
-                    </div>
-                  </CardContent>
-                </Card>
-              </a>
-            </Link>
+            <Card 
+              key={match.id} 
+              className="hover:bg-muted/40 transition cursor-pointer"
+              onClick={() => window.location.href = `/messages/${match.id}`}
+            >
+              <CardContent className="p-3 flex items-center gap-3">
+                <Avatar>
+                  <AvatarImage src={user.image} alt={user.name} />
+                  <AvatarFallback>{user.name.substring(0, 2)}</AvatarFallback>
+                </Avatar>
+                <div className="flex-1">
+                  <div className="flex justify-between items-center">
+                    <h3 className="font-medium">{user.name}</h3>
+                    <span className="text-xs text-muted-foreground">
+                      {formatDistanceToNow(matchDate, { addSuffix: true })}
+                    </span>
+                  </div>
+                  <p className="text-sm text-muted-foreground truncate">
+                    You matched with {user.name}!
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
           );
         })}
       </div>

@@ -44,8 +44,8 @@ function App() {
     }
   }, [currentUser]);
 
-  // Hide bottom navigation on certain routes
-  const shouldShowNavigation = !location.includes("messages/");
+  // Hide bottom navigation on chat conversation routes
+  const shouldShowNavigation = !location.startsWith("/messages/");
 
   return (
     <QueryClientProvider client={queryClient}>
@@ -57,6 +57,7 @@ function App() {
               <Route path="/" component={() => <Home userId={currentUser || 1} />} />
               <Route path="/matches" component={() => <Matches userId={currentUser || 1} />} />
               <Route path="/messages" component={() => <Messages userId={currentUser || 1} />} />
+              <Route path="/messages/:matchId" component={ChatConversation} />
               <Route component={NotFound} />
             </Switch>
           </main>
