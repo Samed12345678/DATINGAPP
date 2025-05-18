@@ -1,4 +1,4 @@
-import { pgTable, text, serial, integer, boolean, timestamp } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, integer, boolean, timestamp, numeric } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -13,6 +13,12 @@ export const users = pgTable("users", {
   image: text("image").notNull(),
   distance: integer("distance"),
   tags: text("tags").array(),
+  // New fields for the rating system
+  score: numeric("score").notNull().default("100"), // Default starting score
+  likesReceived: integer("likes_received").notNull().default(0),
+  dislikesReceived: integer("dislikes_received").notNull().default(0),
+  creditsRemaining: integer("credits_remaining").notNull().default(10), // Daily credits
+  lastCreditReset: timestamp("last_credit_reset").defaultNow().notNull(), // When credits were last reset
 });
 
 export const profiles = pgTable("profiles", {
@@ -51,7 +57,9 @@ export const messages = pgTable("messages", {
 });
 
 // Schemas
-export const insertUserSchema = createInsertSchema(users).pick({
+export const insertUserSchema = createInsertSchema(users);
+// Create a version with only the fields we want to allow for inserts
+export const userInsertFields = insertUserSchema.pick({
   username: true,
   password: true,
   name: true,
@@ -69,6 +77,8 @@ export const insertSwipeSchema = createInsertSchema(swipes).pick({
   liked: true,
 });
 
+export type InsertSwipe = z.infer<typeof insertSwipeSchema>;
+
 export const insertMessageSchema = createInsertSchema(messages).pick({
   matchId: true,
   senderId: true,
@@ -76,8 +86,10 @@ export const insertMessageSchema = createInsertSchema(messages).pick({
   content: true,
 });
 
+export type InsertMessage = z.infer<typeof insertMessageSchema>;
+
 // Types
-export type InsertUser = z.infer<typeof insertUserSchema>;
+export type InsertUser = z.infer<typeof userInsertFields>;
 export type User = typeof users.$inferSelect;
 export type Swipe = typeof swipes.$inferSelect;
 export type Match = typeof matches.$inferSelect;

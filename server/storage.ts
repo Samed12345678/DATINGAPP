@@ -8,6 +8,15 @@ export interface IStorage {
   getUsers(): Promise<User[]>;
   getUsersForSwiping(userId: number): Promise<User[]>;
   
+  // Credit system and scoring operations
+  updateUserScore(userId: number, newScore: number): Promise<User>;
+  incrementLikesReceived(userId: number): Promise<User>;
+  incrementDislikesReceived(userId: number): Promise<User>;
+  resetDailyCredits(userId: number, credits?: number): Promise<User>;
+  checkAndResetCreditsIfNeeded(userId: number): Promise<User>;
+  decrementCredits(userId: number): Promise<User>;
+  getRemainingCredits(userId: number): Promise<number>;
+  
   // Swipe operations
   createSwipe(swipe: InsertSwipe): Promise<Swipe>;
   getSwipe(swiperId: number, swipedId: number): Promise<Swipe | undefined>;
@@ -31,6 +40,10 @@ export class MemStorage implements IStorage {
   private currentSwipeId: number;
   private currentMatchId: number;
   private currentMessageId: number;
+  private DEFAULT_DAILY_CREDITS = 10;
+  private SCORE_INCREASE_ON_LIKE = 2;
+  private SCORE_DECREASE_ON_DISLIKE = 1;
+  private MILLISEC_IN_DAY = 24 * 60 * 60 * 1000;
 
   constructor() {
     this.users = new Map();
@@ -73,8 +86,151 @@ export class MemStorage implements IStorage {
       .filter(swipe => swipe.swiperId === userId)
       .map(swipe => swipe.swipedId);
     
-    return Array.from(this.users.values())
+    // Get eligible profiles (not swiped yet)
+    const eligibleProfiles = Array.from(this.users.values())
       .filter(user => user.id !== userId && !swipedUserIds.includes(user.id));
+    
+    // Sort profiles by score (higher score comes first)
+    // This creates a "popularity" ranking where more liked profiles appear first
+    return eligibleProfiles.sort((a, b) => {
+      // Parse score as number for proper comparison
+      const scoreA = parseFloat(a.score as string);
+      const scoreB = parseFloat(b.score as string);
+      return scoreB - scoreA;
+    });
+  }
+  
+  // Credit system and scoring operations
+  async updateUserScore(userId: number, newScore: number): Promise<User> {
+    const user = await this.getUser(userId);
+    if (!user) {
+      throw new Error(`User with ID ${userId} not found`);
+    }
+    
+    // Update the user's score
+    const updatedUser: User = {
+      ...user,
+      score: newScore.toString()
+    };
+    
+    this.users.set(userId, updatedUser);
+    return updatedUser;
+  }
+  
+  async incrementLikesReceived(userId: number): Promise<User> {
+    const user = await this.getUser(userId);
+    if (!user) {
+      throw new Error(`User with ID ${userId} not found`);
+    }
+    
+    // Increment likes received count
+    const likesReceived = (user.likesReceived || 0) + 1;
+    
+    // Calculate new score based on likes and dislikes
+    // Score increases more when user gets liked
+    const currentScore = parseFloat(user.score as string);
+    const newScore = currentScore + this.SCORE_INCREASE_ON_LIKE;
+    
+    // Update user with new values
+    const updatedUser: User = {
+      ...user,
+      likesReceived,
+      score: newScore.toString()
+    };
+    
+    this.users.set(userId, updatedUser);
+    return updatedUser;
+  }
+  
+  async incrementDislikesReceived(userId: number): Promise<User> {
+    const user = await this.getUser(userId);
+    if (!user) {
+      throw new Error(`User with ID ${userId} not found`);
+    }
+    
+    // Increment dislikes received count
+    const dislikesReceived = (user.dislikesReceived || 0) + 1;
+    
+    // Calculate new score based on likes and dislikes
+    // Score decreases less when user gets disliked
+    const currentScore = parseFloat(user.score as string);
+    const newScore = Math.max(currentScore - this.SCORE_DECREASE_ON_DISLIKE, 10); // Don't go below 10
+    
+    // Update user with new values
+    const updatedUser: User = {
+      ...user,
+      dislikesReceived,
+      score: newScore.toString()
+    };
+    
+    this.users.set(userId, updatedUser);
+    return updatedUser;
+  }
+  
+  async resetDailyCredits(userId: number, credits = this.DEFAULT_DAILY_CREDITS): Promise<User> {
+    const user = await this.getUser(userId);
+    if (!user) {
+      throw new Error(`User with ID ${userId} not found`);
+    }
+    
+    // Reset credits and update timestamp
+    const updatedUser: User = {
+      ...user,
+      creditsRemaining: credits,
+      lastCreditReset: new Date()
+    };
+    
+    this.users.set(userId, updatedUser);
+    return updatedUser;
+  }
+  
+  async checkAndResetCreditsIfNeeded(userId: number): Promise<User> {
+    const user = await this.getUser(userId);
+    if (!user) {
+      throw new Error(`User with ID ${userId} not found`);
+    }
+    
+    // Check if we need to reset credits (it's been more than 24 hours)
+    const now = new Date();
+    const lastReset = new Date(user.lastCreditReset);
+    const timeSinceReset = now.getTime() - lastReset.getTime();
+    
+    if (timeSinceReset >= this.MILLISEC_IN_DAY) {
+      // It's been at least 24 hours, reset credits
+      return this.resetDailyCredits(userId);
+    }
+    
+    return user;
+  }
+  
+  async decrementCredits(userId: number): Promise<User> {
+    const user = await this.getUser(userId);
+    if (!user) {
+      throw new Error(`User with ID ${userId} not found`);
+    }
+    
+    // Ensure we've checked for daily reset before decrementing
+    await this.checkAndResetCreditsIfNeeded(userId);
+    
+    // Get the latest user state after possible reset
+    const updatedUser = await this.getUser(userId);
+    
+    // Decrement credits, don't go below 0
+    const newCredits = Math.max((updatedUser?.creditsRemaining || 0) - 1, 0);
+    
+    const finalUser: User = {
+      ...updatedUser!,
+      creditsRemaining: newCredits
+    };
+    
+    this.users.set(userId, finalUser);
+    return finalUser;
+  }
+  
+  async getRemainingCredits(userId: number): Promise<number> {
+    // Check if we need to reset first
+    const user = await this.checkAndResetCreditsIfNeeded(userId);
+    return user.creditsRemaining || 0;
   }
 
   async createSwipe(swipe: InsertSwipe): Promise<Swipe> {
