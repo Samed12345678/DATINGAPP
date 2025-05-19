@@ -2,15 +2,15 @@ import { drizzle } from 'drizzle-orm/node-postgres';
 import { Pool } from 'pg';
 import * as schema from '../shared/schema';
 
-// Initialize PostgreSQL connection pool
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
+  ssl: {
+    rejectUnauthorized: false,
+  },
 });
 
-// Create drizzle database instance with our schema
 export const db = drizzle(pool, { schema });
 
-// Test the connection
 async function testConnection() {
   try {
     await pool.query('SELECT NOW()');
